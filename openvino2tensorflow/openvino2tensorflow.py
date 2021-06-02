@@ -247,7 +247,6 @@ def convert(model_path,
         else:
             # Other
             if layer_id in tf_edges:
-                print("Layer_id = {}, edge_index = {}, in len tf_edges {}".format(layer_id, edge_index,len(tf_edges)))
                 before_layer_type = get_bere_layer_type(tf_edges[layer_id][edge_index])
             else:
                 for key in tf_edges.keys():
@@ -919,19 +918,19 @@ def convert(model_path,
                             tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
                         )
             else:
-                try:
-                    # unknown
-                    tf_layers_dict[layer_id] = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
-                    )
-                except:
-                    print("unkown multiplication layer?")
-                    print("layer_id = {}, no of tf_edges[layer_id] = {}".format(layer_id, len(tf_edges[layer_id])))
-                    tf_layers_dict[layer_id] = tf.math.multiply(
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
-                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
-                    )
+                #try:
+                # unknown
+                tf_layers_dict[layer_id] = tf.math.multiply(
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+                    tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 1)]
+                )
+#                except:
+#                    print("unkown multiplication layer?")
+#                    print("layer_id = {}, no of tf_edges[layer_id] = {}".format(layer_id, len(tf_edges[layer_id])))
+#                    tf_layers_dict[layer_id] = tf.math.multiply(
+#                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)],
+#                        tf_layers_dict[get_tf_edges_from(tf_edges, layer_id, 0)]
+#                    )
                     
         ### Interpolate
         elif layer.attrib['type'] == 'Interpolate':
@@ -2516,6 +2515,21 @@ def convert(model_path,
                 print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
                 import traceback
                 traceback.print_exc()
+        elif calib_ds_type == 'special':
+            print(f'{Color.REVERCE}numpy dataset load started{Color.RESET}', '=' * 58)
+            try:
+                if load_dest_file_path_for_the_calib_npy == npy_load_default_path and not os.path.exists(npy_load_default_path):
+                    print(f'{Color.RED}ERROR:{Color.RESET} Specify --local_dest_file_path_for_the_calib_npy parameter')
+                raw_test_data = []
+                for i in range(500):
+                    raw_test_data.append(np.load(load_dest_file_path_for_the_calib_npy))
+
+                print(f'{Color.GREEN}numpy dataset load complete!{Color.RESET}')
+            except subprocess.CalledProcessError as e:
+                print(f'{Color.RED}ERROR:{Color.RESET}', e.stderr.decode('utf-8'))
+                import traceback
+                traceback.print_exc()
+
         else:
             pass
         input_shapes = [model_input.shape for model_input in model.inputs]
@@ -2533,18 +2547,33 @@ def convert(model_path,
                     images.append(tmp_image)
                 yield images
         elif calib_ds_type == 'numpy':
-            print("I am calib_ds_type numpy")
             for idx in range(raw_test_data.shape[0]):
                 image = raw_test_data[idx]
                 images = []
                 for shape in input_shapes:
-                    print("Shape {}".format(shape))
-                    tmp_image = tf.random.uniform(shape)
-                    #data = tf.image.resize(image, (shape[1], shape[2]))
-                    #tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
-                    #tmp_image = tmp_image[np.newaxis,:,:,:]
+                    data = tf.image.resize(image, (shape[1], shape[2]))
+                    tmp_image = eval(string_formulas_for_normalization) # Default: (data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]
+                    tmp_image = tmp_image[np.newaxis,:,:,:]
                     images.append(tmp_image)
                 yield images
+        elif calib_ds_type == 'special':
+            print("I am calib_ds_type special")
+            print(len(raw_test_data))
+            print(raw_test_data[0].shape)
+            print("Expected shape: {}".format(input_shapes))
+
+
+
+            for idx in range(len(raw_test_data)):
+                data = []
+                for shape in input_shapes:
+                   newelement = raw_test_data[idx]
+                   newelement = newelement.transpose([0,2,3,1])
+                   data.append(newelement)
+                print(data[0].shape)
+
+                yield(data)
+              
 
     # Integer Quantization
     if output_integer_quant_tflite:
@@ -2884,6 +2913,8 @@ def main():
     if calib_ds_type == 'tfds':
         pass
     elif calib_ds_type == 'numpy':
+        pass
+    elif calib_ds_type == 'special':
         pass
     else:
         print('Only \'tfds\' or \'numpy\' can be specified for calib_ds_type.')
