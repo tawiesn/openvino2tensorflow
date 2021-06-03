@@ -131,7 +131,8 @@ def convert(model_path,
             restricted_resize_image_mode,
             weight_replacement_config,
             debug,
-            debug_layer_number):
+            debug_layer_number,
+            output_full_integer_quant_tflite_v1):
 
     print(f'{Color.REVERCE}TensorFlow/Keras model building process starts{Color.RESET}', '=' * 38)
 
@@ -2475,7 +2476,7 @@ def convert(model_path,
     # Downloading datasets for calibration
     raw_test_data = None
     input_shapes = None
-    if output_integer_quant_tflite or output_full_integer_quant_tflite:
+    if output_integer_quant_tflite or output_full_integer_quant_tflite or output_full_integer_quant_tflite_v1:
         if calib_ds_type == 'tfds':
             print(f'{Color.REVERCE}TFDS download started{Color.RESET}', '=' * 63)
             raw_test_data = tfds.load(name=ds_name_for_tfds_for_calibration,
@@ -2617,6 +2618,33 @@ def convert(model_path,
             print(f'{Color.RED}ERROR:{Color.RESET}', e)
             import traceback
             traceback.print_exc()
+
+    # Full Integer Quantization
+    if output_full_integer_quant_tflite_v1:
+        try:
+            print(f'{Color.REVERCE}Full Integer Quantization (V1) started{Color.RESET}', '=' * 51)
+            #converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
+            #converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            #converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
+            #inf_type = None
+            #if output_integer_quant_type == 'int8':
+            #    inf_type = tf.int8
+            #elif output_integer_quant_type == 'uint8':
+            #    inf_type = tf.uint8
+            #else:
+            #    inf_type = tf.int8
+            #converter.inference_input_type = inf_type
+            #converter.inference_output_type = inf_type
+            #converter.representative_dataset = representative_dataset_gen
+            #tflite_model = converter.convert()
+            #with open(f'{model_output_path}/model_full_integer_quant.tflite', 'wb') as w:
+            #    w.write(tflite_model)
+            #print(f'{Color.GREEN}Full Integer Quantization complete!{Color.RESET} - {model_output_path}/model_full_integer_quant.tflite')
+        except Exception as e:
+            print(f'{Color.RED}ERROR:{Color.RESET}', e)
+            import traceback
+            traceback.print_exc()
+
 
     # TensorFlow.js convert
     if output_tfjs:
@@ -2783,6 +2811,7 @@ def main():
     parser.add_argument('--output_float16_quant_tflite', action='store_true', help='float16 quant tflite output switch')
     parser.add_argument('--output_integer_quant_tflite', action='store_true', help='integer quant tflite output switch')
     parser.add_argument('--output_full_integer_quant_tflite', action='store_true', help='full integer quant tflite output switch')
+    parser.add_argument('--output_full_integer_quant_tflite_v1', action='store_true', help='experimental')
     parser.add_argument('--output_integer_quant_type', type=str, default='int8', help='Input and output types when doing Integer Quantization (\'int8 (default)\' or \'uint8\')')
     parser.add_argument('--string_formulas_for_normalization', type=str, default='(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]', help='String formulas for normalization. It is evaluated by Python\'s eval() function. Default: \'(data - [127.5,127.5,127.5]) / [127.5,127.5,127.5]\'')
     parser.add_argument('--calib_ds_type', type=str, default='numpy', help='Types of data sets for calibration. tfds or numpy. Only one of them can be specified. Default: numpy [20, 513, 513, 3] -> [Number of images, h, w, c]')
@@ -2825,6 +2854,7 @@ def main():
     output_float16_quant_tflite = args.output_float16_quant_tflite
     output_integer_quant_tflite = args.output_integer_quant_tflite
     output_full_integer_quant_tflite = args.output_full_integer_quant_tflite
+    output_full_integer_quant_tflite_v1 = args.output_full_integer_quant_tflite_v1
     output_integer_quant_type = args.output_integer_quant_type.lower()
     string_formulas_for_normalization = args.string_formulas_for_normalization.lower()
     calib_ds_type = args.calib_ds_type.lower()
@@ -2859,6 +2889,7 @@ def main():
         not output_float16_quant_tflite and \
         not output_integer_quant_tflite and \
         not output_full_integer_quant_tflite and \
+        not output_full_integer_quant_tflite_v1 and \
         not output_tfjs and \
         not output_tftrt and \
         not output_coreml and \
@@ -2935,7 +2966,8 @@ def main():
             output_tfjs, output_tftrt, output_coreml, output_edgetpu, output_onnx, onnx_opset, output_myriad,
             vpu_number_of_shaves, vpu_number_of_cmx_slices,
             replace_swish_and_hardswish, optimizing_hardswish_for_edgetpu, replace_prelu_and_minmax,
-            yolact, restricted_resize_image_mode, weight_replacement_config, debug, debug_layer_number)
+            yolact, restricted_resize_image_mode, weight_replacement_config, debug, debug_layer_number,
+            output_full_integer_quant_tflite_v1)
     print(f'{Color.REVERCE}All the conversion process is finished!{Color.RESET}', '=' * 45)
 
 if __name__ == "__main__":
