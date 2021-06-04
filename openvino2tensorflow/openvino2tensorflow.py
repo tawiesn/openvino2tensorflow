@@ -2623,6 +2623,28 @@ def convert(model_path,
     if output_full_integer_quant_tflite_v1:
         try:
             print(f'{Color.REVERCE}Full Integer Quantization (V1) started{Color.RESET}', '=' * 51)
+            converter = tf.compat.v1.lite.TFLiteConverter.from_saved_model(model_output_path)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
+            inf_type = None
+            if output_integer_quant_type == 'int8':
+                inf_type = tf.int8
+            elif output_integer_quant_type == 'uint8':
+                inf_type = tf.uint8
+            else:
+                inf_type = tf.int8
+            converter.inference_input_type = inf_type
+            converter.inference_output_type = inf_type
+            converter.representative_dataset = representative_dataset_gen  
+            # has no effect?
+            #converter.quantized_input_stats =  {"serving_default_model" : [(0., 1.),(0.3,0.01),(0.5,0.01)]}   
+            converter.experimental_new_converter = True
+            converter.experimental_new_quantizer = False 
+            tflite_model = converter.convert()
+            with open(f'{model_output_path}/model_full_integer_quant_v1.tflite', 'wb') as w:
+                w.write(tflite_model)
+            print(f'{Color.GREEN}Full Integer Quantization (V1) complete!{Color.RESET} - {model_output_path}/model_full_integer_quant_v1.tflite')
+
             #converter = tf.lite.TFLiteConverter.from_saved_model(model_output_path)
             #converter.optimizations = [tf.lite.Optimize.DEFAULT]
             #converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.lite.OpsSet.SELECT_TF_OPS]
